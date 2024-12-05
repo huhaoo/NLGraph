@@ -11,6 +11,7 @@ from tenacity import (
     stop_after_attempt,
     wait_random_exponential,
 )  # for exponential backoff
+import util
 
 model_list = ["text-davinci-003","code-davinci-002","gpt-3.5-turbo","gpt-4"]
 parser = argparse.ArgumentParser(description="connectivity")
@@ -18,15 +19,15 @@ parser.add_argument('--model', type=str, default="text-davinci-003", help='name 
 parser.add_argument('--mode', type=str, default="easy", help='mode (default: easy)')
 parser.add_argument('--prompt', type=str, default="none", help='prompting techniques (default: none)')
 parser.add_argument('--T', type=int, default=0, help='temprature (default: 0)')
-parser.add_argument('--token', type=int, default=400, help='max token (default: 400)')
+parser.add_argument('--token', type=int, default=4096, help='max token (default: 4096)')
 parser.add_argument('--SC', type=int, default=0, help='self-consistency (default: 0)')
 parser.add_argument('--SC_num', type=int, default=5, help='number of cases for self-consistency (default: 5)')
 args = parser.parse_args()
-assert args.prompt in ["CoT", "none", "0-CoT", "LTM", "PROGRAM","k-shot","Instruct","Algorithm"]
+assert args.prompt in ["CoT", "none", "0-CoT", "LTM", "PROGRAM","k-shot","Instruct","Algorithm","mat"]
 
 def translate(edge, n, args):
     Q = ''
-    if args.prompt in ["CoT", "k-shot", "LTM", "Instruct", "Algorithm"]:
+    if args.prompt in ["CoT", "k-shot", "LTM", "Instruct", "Algorithm","mat"]:
         with open("NLGraph/topology/prompt/" + args.prompt + "-prompt.txt", "r") as f:
             exemplar = f.read()
         Q = Q + exemplar + "\n\n"
@@ -45,36 +46,36 @@ def translate(edge, n, args):
             Q = Q + " Let's solve the problem by a Python program:"
     return Q
 
-@retry(wait=wait_random_exponential(min=1, max=60), stop=stop_after_attempt(1000))
-def predict(Q):
-    input = Q
-    temperature = 0
-    if args.SC == 1:
-        temperature = 0.7
-    if 'gpt' in args.model:
-        Answer_list = []
-        for text in input:
-            response = openai.ChatCompletion.create(
-            model=args.model,
-            messages=[
-            {"role": "system", "content": "You are a helpful assistant."},
-            {"role": "user", "content": text},
-            ],
-            temperature=temperature,
-            max_tokens=args.token,
-            )
-            Answer_list.append(response["choices"][0]["message"]["content"])
-        return Answer_list
-    response = openai.Completion.create(
-    model=args.model,
-    prompt=input,
-    temperature=temperature,
-    max_tokens=args.token,
-    )
-    Answer_list = []
-    for i in range(len(input)):
-        Answer_list.append(response["choices"][i]["text"])
-    return Answer_list
+# @retry(wait=wait_random_exponential(min=1, max=60), stop=stop_after_attempt(1000))
+# def predict(Q):
+#     input = Q
+#     temperature = 0
+#     if args.SC == 1:
+#         temperature = 0.7
+#     if 'gpt' in args.model:
+#         Answer_list = []
+#         for text in input:
+#             response = openai.ChatCompletion.create(
+#             model=args.model,
+#             messages=[
+#             {"role": "system", "content": "You are a helpful assistant."},
+#             {"role": "user", "content": text},
+#             ],
+#             temperature=temperature,
+#             max_tokens=args.token,
+#             )
+#             Answer_list.append(response["choices"][0]["message"]["content"])
+#         return Answer_list
+#     response = openai.Completion.create(
+#     model=args.model,
+#     prompt=input,
+#     temperature=temperature,
+#     max_tokens=args.token,
+#     )
+#     Answer_list = []
+#     for i in range(len(input)):
+#         Answer_list.append(response["choices"][i]["text"])
+#     return Answer_list
 
 def log(Q, res, answer, args):
     utc_dt = datetime.utcnow().replace(tzinfo=timezone.utc)
@@ -140,12 +141,12 @@ def evaluate(ans, G):
     return (flag1 or flag2)
 
 def main():
-    if 'OPENAI_API_KEY' in os.environ:
-        openai.api_key = os.environ['OPENAI_API_KEY']
-    else:
-        raise Exception("Missing openai key!")
-    if 'OPENAI_ORGANIZATION' in os.environ:
-        openai.organization = os.environ['OPENAI_ORGANIZATION']
+    # if 'OPENAI_API_KEY' in os.environ:
+    #     openai.api_key = os.environ['OPENAI_API_KEY']
+    # else:
+    #     raise Exception("Missing openai key!")
+    # if 'OPENAI_ORGANIZATION' in os.environ:
+    #     openai.organization = os.environ['OPENAI_ORGANIZATION']
     res, answer = [], []
     match args.mode:
         case "easy":
@@ -154,6 +155,7 @@ def main():
             g_num = 450
         case "hard":
             g_num = 180
+
 
     batch_num = 20
     for i in tqdm(range((g_num + batch_num - 1) // batch_num)):
@@ -172,7 +174,7 @@ def main():
                 Q_list.append(Q)
                 G_list.append(G)
 
-        ans_list = predict(Q_list)
+        ans_list = util.predict(Q_list, args)
         for k in range(len(ans_list)):
             ans, G = ans_list[k], G_list[k]
             answer.append(ans.lower())

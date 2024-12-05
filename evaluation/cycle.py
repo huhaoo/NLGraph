@@ -12,8 +12,9 @@ from tenacity import (
     stop_after_attempt,
     wait_random_exponential,
 )  # for exponential backoff
+import util
 
-model_list = ["text-davinci-003","code-davinci-002","gpt-3.5-turbo","gpt-4"]
+# model_list = ["text-davinci-003","code-davinci-002","gpt-3.5-turbo","gpt-4"]
 parser = argparse.ArgumentParser(description="cycle")
 parser.add_argument('--model', type=str, default="text-davinci-003", help='name of LM (default: text-davinci-003)')
 parser.add_argument('--mode', type=str, default="easy", help='mode (default: easy)')
@@ -60,37 +61,6 @@ def translate(edge, n, args):
 
     return Q
 
-@retry(wait=wait_random_exponential(min=1, max=30), stop=stop_after_attempt(1000))
-def predict(Q, args):
-    input = Q
-    temperature = 0
-    if args.SC == 1:
-        temperature = 0.7
-    if 'gpt' in args.model:
-        Answer_list = []
-        for text in input:
-            response = openai.ChatCompletion.create(
-            model=args.model,
-            messages=[
-            {"role": "system", "content": "You are a helpful assistant."},
-            {"role": "user", "content": text},
-            ],
-            temperature=temperature,
-            max_tokens=args.token,
-            )
-            Answer_list.append(response["choices"][0]["message"]["content"])
-        return Answer_list
-    response = openai.Completion.create(
-    model=args.model,
-    prompt=input,
-    temperature=temperature,
-    max_tokens=args.token,
-    )
-    Answer_list = []
-    for i in range(len(input)):
-        Answer_list.append(response["choices"][i]["text"])
-    return Answer_list
-
 def log(Q, res, answer, args):
     utc_dt = datetime.utcnow().replace(tzinfo=timezone.utc)
     bj_dt = utc_dt.astimezone(timezone(timedelta(hours=8)))
@@ -110,12 +80,13 @@ def log(Q, res, answer, args):
         print(args, file=f)
 
 def main():
-    if 'OPENAI_API_KEY' in os.environ:
-        openai.api_key = os.environ['OPENAI_API_KEY']
-    else:
-        raise Exception("Missing openai key!")
-    if 'OPENAI_ORGANIZATION' in os.environ:
-        openai.organization = os.environ['OPENAI_ORGANIZATION']
+    # if 'OPENAI_API_KEY' in os.environ:
+    #     openai.api_key = os.environ['OPENAI_API_KEY']
+    # else:
+    #     raise Exception("Missing openai key!")
+    # if 'OPENAI_ORGANIZATION' in os.environ:
+    #     openai.organization = os.environ['OPENAI_ORGANIZATION']
+    # openai.base_url = "https://aihubmix.com/v1"
     res, answer = [], []
     match args.mode:
         case "easy":
@@ -146,7 +117,7 @@ def main():
             sc = args.SC_num
         sc_list = []
         for k in range(sc):
-            answer_list = predict(Q_list, args)
+            answer_list = util.predict(Q_list, args)
             sc_list.append(answer_list)
         for j in range(len(Q_list)):
             vote = 0
