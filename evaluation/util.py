@@ -1,5 +1,6 @@
 import openai
 import os
+import time
 from tenacity import (
     retry,
     stop_after_attempt,
@@ -13,14 +14,17 @@ client= openai.OpenAI(
 
 log_file=open("log.txt","w")
 
+finish_reason_stop=0
+
 @retry(wait=wait_random_exponential(min=1, max=60), stop=stop_after_attempt(1000))
 def predict(Q, args):
+    time.sleep(1)
     # print("predict with args: ", args)
     prom = Q
     temperature = 0
     if args.SC == 1:
         temperature = 0.7
-    if not 'instruct' in args.model:
+    if not 'instruct' in args.model and not 'Instruct' in args.model:
         Answer_list = []
         for text in prom:
             try:
@@ -71,6 +75,9 @@ def predict(Q, args):
             # print("prompt:", prom[i], file=log_file)
             # print("response:", response.choices[i].text, file=log_file)
             # print("\n\n", file=log_file)
+            if response.choices[i].finish_reason == "stop":
+                global finish_reason_stop
+                finish_reason_stop+=1
         # print(Answer_list)
         return Answer_list
         # Answer_list = []

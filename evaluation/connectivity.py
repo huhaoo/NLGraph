@@ -11,6 +11,7 @@ from tenacity import (
     stop_after_attempt,
     wait_random_exponential,
 )  # for exponential backoff
+import util
 
 model_list = ["text-davinci-003","code-davinci-002","gpt-3.5-turbo","gpt-4"]
 parser = argparse.ArgumentParser(description="connectivity")
@@ -18,7 +19,7 @@ parser.add_argument('--model', type=str, default="text-davinci-003", help='name 
 parser.add_argument('--mode', type=str, default="easy", help='mode (default: easy)')
 parser.add_argument('--prompt', type=str, default="none", help='prompting techniques (default: none)')
 parser.add_argument('--T', type=int, default=0, help='temprature (default: 0)')
-parser.add_argument('--token', type=int, default=256, help='max token (default: 256)')
+parser.add_argument('--token', type=int, default=256, help='max token')
 parser.add_argument('--SC', type=int, default=0, help='self-consistency (default: 0)')
 parser.add_argument('--SC_num', type=int, default=5, help='number of cases for SC (default: 5)')
 args = parser.parse_args()
@@ -52,36 +53,36 @@ def translate(m,q,array,args):
         Q_list.append(Q_i)
     return Q_list
 
-@retry(wait=wait_random_exponential(min=1, max=60), stop=stop_after_attempt(1000))
-def predict(Q, args):
-    input = Q
-    temperature = args.T
-    if args.SC == 1:
-        temperature = 0.7
-    if 'gpt' in args.model:
-        Answer_list = []
-        for text in input:
-            response = openai.ChatCompletion.create(
-            model=args.model,
-            messages=[
-            {"role": "system", "content": "You are a helpful assistant."},
-            {"role": "user", "content": text},
-            ],
-            temperature=temperature,
-            max_tokens=args.token,
-            )
-            Answer_list.append(response["choices"][0]["message"]["content"])
-        return Answer_list
-    response = openai.Completion.create(
-    model=args.model,
-    prompt=input,
-    temperature=temperature,
-    max_tokens=args.token,
-    )
-    Answer_list = []
-    for i in range(len(input)):
-        Answer_list.append(response["choices"][i]["text"])
-    return Answer_list
+# @retry(wait=wait_random_exponential(min=1, max=60), stop=stop_after_attempt(1000))
+# def predict(Q, args):
+#     input = Q
+#     temperature = args.T
+#     if args.SC == 1:
+#         temperature = 0.7
+#     if 'gpt' in args.model:
+#         Answer_list = []
+#         for text in input:
+#             response = openai.ChatCompletion.create(
+#             model=args.model,
+#             messages=[
+#             {"role": "system", "content": "You are a helpful assistant."},
+#             {"role": "user", "content": text},
+#             ],
+#             temperature=temperature,
+#             max_tokens=args.token,
+#             )
+#             Answer_list.append(response["choices"][0]["message"]["content"])
+#         return Answer_list
+#     response = openai.Completion.create(
+#     model=args.model,
+#     prompt=input,
+#     temperature=temperature,
+#     max_tokens=args.token,
+#     )
+#     Answer_list = []
+#     for i in range(len(input)):
+#         Answer_list.append(response["choices"][i]["text"])
+#     return Answer_list
 
 def log(Q_list, res, answer, args):
     utc_dt = datetime.utcnow().replace(tzinfo=timezone.utc)
@@ -100,24 +101,25 @@ def log(Q_list, res, answer, args):
         f.write("\n")
         f.write("Acc: " + str(res.sum())+'/'+str(len(res)) + '\n')
         print(args, file=f)
+        print("non-stop: ", 1-util.finish_reason_stop/len(res))
     
 def main():
-    if 'OPENAI_API_KEY' in os.environ:
-        openai.api_key = os.environ['OPENAI_KEY']
-    else:
-        raise Exception("Missing openai key!")
-    if 'OPENAI_ORGANIZATION' in os.environ:
-        openai.organization = os.environ['OPENAI_ORGANIZATION']
+    # if 'OPENAI_API_KEY' in os.environ:
+    #     openai.api_key = os.environ['OPENAI_KEY']
+    # else:
+    #     raise Exception("Missing openai key!")
+    # if 'OPENAI_ORGANIZATION' in os.environ:
+    #     openai.organization = os.environ['OPENAI_ORGANIZATION']
     res, answer = [], []
     match args.mode:
         case "easy":
-            g_num = 36
+            g_num = 72
         case "medium":
             g_num = 120
         case "hard":
             g_num = 68
-    for i in tqdm(range(g_num)):
-        with open("NLgraph/connectivity/graph/"+args.mode+"/standard/graph"+str(i)+".txt","r") as f:
+    for i in tqdm(range(0,g_num,4)):
+        with open("NLgraph/connectivity/graph/"+args.mode+"/full/graph"+str(i)+".txt","r") as f:
             n, m ,q = [int(x) for x in next(f).split()]
             array = []
             for line in f: # read rest of lines
@@ -129,7 +131,7 @@ def main():
                 sc = args.SC_num
             sc_list = []
             for k in range(sc):
-                answer_list = predict(Q_list, args)
+                answer_list = util.predict(Q_list, args)
                 sc_list.append(answer_list)
             for j in range(q):
                 vote = 0

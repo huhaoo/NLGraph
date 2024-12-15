@@ -7,23 +7,33 @@ def latest_acc(q,model,mode,prompt):
     time_format = "%Y%m%d---%H-%M"
     prompt=re.sub(r'\+','\\+',prompt)
     pattern = re.compile(f"^{model}-{mode}-\\d*---\\d*-\\d*-{prompt}$")
-    mx=None
+    fol=[]
     for folder in folders:
         match = pattern.search(folder)
-        if match and (mx==None or folder > mx):
-            mx=folder
-    print(mx)
-    if mx==None:
-        return None
-    f=open(f"{pwd}/{mx}/prompt.txt","r")
-    data=f.read().split('\n')[-3].split(' ')[1].split('/')
-    x,y=int(data[0]),int(data[1])
-    f.close()
+        if match :
+            fol.append(folder)
+    fol=sorted(fol,reverse=True)
+    fol=fol[:min(1,len(fol))]
+    # print(fol)
+    if len(fol)==0:
+        return {'avg':None}
+    res=[]
+    for i in fol:
+        f=open(f"{pwd}/{i}/prompt.txt","r")
+        data=f.read().split('\n')[-3].split(' ')[1].split('/')
+        x,y=int(data[0]),int(data[1])
+        res.append(x/y)
+        f.close()
     # return x,y
-    return f"{x/y*100:.2f}%"
+    return {'avg':f"{sum(res)/len(res)*100:.2f}%",'list':res}
 
-prompt=["none","k-shot","0-CoT","CoT","CoT+SC","LTM","mat","Algorithm"]
-# prompt=["none","k-shot","0-CoT","CoT","CoT+SC","LTM"]
+# prompt=["none","k-shot","0-CoT","CoT","CoT+SC","LTM","mat","Algorithm"]
+prompt=["none","k-shot","0-CoT","CoT","CoT+SC","mat","kmat","rp"]
+print("gpt-3.5-turbo-instruct")
 for i in prompt:
-    # print(latest_acc("topology","gpt-3.5-turbo-instruct","easy",i))
-    print(f'{i}: {latest_acc("topology","gpt-3.5-turbo-instruct","easy",i)}')
+    # print(f'{i}: {latest_acc("topology","gpt-4o-mini","easy",i)["avg"]}')
+    print(f' {i}: {latest_acc("topology","gpt-3.5-turbo-instruct","easy",i)["avg"]}')
+print("gpt-4o-mini")
+for i in prompt:
+    print(f' {i}: {latest_acc("topology","gpt-4o-mini","easy",i)["avg"]}')
+    # print(f'{i}: {latest_acc("topology","gpt-3.5-turbo-instruct","easy",i)["avg"]}')

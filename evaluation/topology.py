@@ -19,15 +19,22 @@ parser.add_argument('--model', type=str, default="text-davinci-003", help='name 
 parser.add_argument('--mode', type=str, default="easy", help='mode (default: easy)')
 parser.add_argument('--prompt', type=str, default="none", help='prompting techniques (default: none)')
 parser.add_argument('--T', type=int, default=0, help='temprature (default: 0)')
-parser.add_argument('--token', type=int, default=4096, help='max token (default: 4096)')
+parser.add_argument('--token', type=int, default=3072, help='max token')
 parser.add_argument('--SC', type=int, default=0, help='self-consistency (default: 0)')
 parser.add_argument('--SC_num', type=int, default=5, help='number of cases for self-consistency (default: 5)')
+parser.add_argument('--full', type=bool, default=False, help='full test or stand test')
+parser.add_argument('--num', type=int, default=-1, help='number of tests')
 args = parser.parse_args()
-assert args.prompt in ["CoT", "none", "0-CoT", "LTM", "PROGRAM","k-shot","Instruct","Algorithm","mat"]
+args.full="full" if args.full else "standard"
+print(args.full)
+if args.num==-1:
+    args.num=len(os.listdir("NLgraph/topology/graph/"+args.mode+"/"+args.full))
+    print(f"test on {args.num} tasks.")
+assert args.prompt in ["CoT", "none", "0-CoT", "LTM", "PROGRAM","k-shot","Instruct","Algorithm","mat","kmat","rp"]
 
 def translate(edge, n, args):
     Q = ''
-    if args.prompt in ["CoT", "k-shot", "LTM", "Instruct", "Algorithm","mat"]:
+    if args.prompt in ["CoT", "k-shot", "LTM", "Instruct", "Algorithm","mat","kmat","rp"]:
         with open("NLGraph/topology/prompt/" + args.prompt + "-prompt.txt", "r") as f:
             exemplar = f.read()
         Q = Q + exemplar + "\n\n"
@@ -36,7 +43,7 @@ def translate(edge, n, args):
         Q = Q + 'node '+str(edge[i][0])+' should be visited before node '+str(edge[i][1])+'\n'
     if args.prompt == "Instruct":
         Q = Q + "Let's construct a graph with the nodes and edges first.\n"
-    Q = Q + "Q: Can all the nodes be visited? Give the solution.\nA:"
+    Q = Q + "Q: Can all the nodes be visited? Give the solution. If can, output the topology order in list form at the back.\nA:"
     match args.prompt:
         case "0-CoT":
             Q = Q + " Let's think step by step:"
@@ -126,6 +133,7 @@ def process_ans(ans, pos, G):
             num = 0
     return solution
 
+import re
 def evaluate(ans, G):
 
     pos = ans.find("solution")
@@ -138,7 +146,17 @@ def evaluate(ans, G):
     solution = process_ans(ans, 0, G)
 
     flag2  = check(solution, G)
-    return (flag1 or flag2)
+
+    nums = re.findall(r'\d+', ans)
+    
+    n = G.number_of_nodes()
+
+    if len(nums) <= n:
+        nums=[0]*n
+    
+    nums=[int(i) for i in nums]
+    return check(nums[-n:], G) or flag1 or flag2
+    return ()
 
 def main():
     # if 'OPENAI_API_KEY' in os.environ:
@@ -148,20 +166,20 @@ def main():
     # if 'OPENAI_ORGANIZATION' in os.environ:
     #     openai.organization = os.environ['OPENAI_ORGANIZATION']
     res, answer = [], []
-    match args.mode:
-        case "easy":
-            g_num = 180
-        case "medium":
-            g_num = 450
-        case "hard":
-            g_num = 180
-
+    # match args.mode:
+    #     case "easy":
+    #         g_num = 180
+    #     case "medium":
+    #         g_num = 450
+    #     case "hard":
+    #         g_num = 180
+    g_num=args.num
 
     batch_num = 20
     for i in tqdm(range((g_num + batch_num - 1) // batch_num)):
         G_list, Q_list = [], []
         for j in range(i*batch_num, min(g_num, (i+1)*batch_num)):
-            with open("NLgraph/topology/graph/"+args.mode+"/standard/graph"+str(j)+".txt","r") as f:
+            with open("NLgraph/topology/graph/"+args.mode+"/"+args.full+"/graph"+str(j)+".txt","r") as f:
                 n, m = [int(x) for x in next(f).split()]
                 edge = []
                 for line in f: # read rest of lines
@@ -178,11 +196,13 @@ def main():
         for k in range(len(ans_list)):
             ans, G = ans_list[k], G_list[k]
             answer.append(ans.lower())
+            # print(re.findall(r'\d+', ans))
             try:
                 result = evaluate(ans.lower(), G)
-            except:
+                res.append(result)
+            except Exception as e:
                 print(ans.lower())
-            res.append(result)
+                print(e)
 
     res = np.array(res)
     answer = np.array(answer)

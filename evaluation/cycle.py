@@ -90,7 +90,7 @@ def main():
     res, answer = [], []
     match args.mode:
         case "easy":
-            g_num = 150
+            g_num = 300
         case "medium":
             g_num = 600
         case "hard":
@@ -100,7 +100,7 @@ def main():
     for i in tqdm(range((g_num + batch_num - 1) // batch_num)):
         G_list, Q_list = [], []
         for j in range(i*batch_num, min(g_num, (i+1)*batch_num)):
-            with open("NLgraph/cycle/graph/"+args.mode+"/standard/graph"+str(j)+".txt","r") as f:
+            with open("NLgraph/cycle/graph/"+args.mode+"/full/graph"+str(j)+".txt","r") as f:
                 n, m = [int(x) for x in next(f).split()]
                 edge = []
                 for line in f: # read rest of lines
