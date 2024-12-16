@@ -28,7 +28,7 @@ def latest_acc(q,model,mode,prompt):
     return {'avg':f"{sum(res)/len(res)*100:.2f}%",'list':res}
 
 # prompt=["none","k-shot","0-CoT","CoT","CoT+SC","LTM","mat","Algorithm"]
-prompt=["none","k-shot","0-CoT","CoT","CoT+SC","mat","kmat","rp"]
+prompt=["none","k-shot","0-CoT","CoT","CoT+SC","mat","kmat","rp","matm"]
 print("gpt-3.5-turbo-instruct")
 for i in prompt:
     # print(f'{i}: {latest_acc("topology","gpt-4o-mini","easy",i)["avg"]}')

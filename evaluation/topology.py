@@ -30,11 +30,11 @@ print(args.full)
 if args.num==-1:
     args.num=len(os.listdir("NLgraph/topology/graph/"+args.mode+"/"+args.full))
     print(f"test on {args.num} tasks.")
-assert args.prompt in ["CoT", "none", "0-CoT", "LTM", "PROGRAM","k-shot","Instruct","Algorithm","mat","kmat","rp"]
+assert args.prompt in ["CoT", "none", "0-CoT", "LTM", "PROGRAM","k-shot","Instruct","Algorithm","mat","kmat","rp","matm"]
 
 def translate(edge, n, args):
     Q = ''
-    if args.prompt in ["CoT", "k-shot", "LTM", "Instruct", "Algorithm","mat","kmat","rp"]:
+    if args.prompt in ["CoT", "k-shot", "LTM", "Instruct", "Algorithm","mat","kmat","rp","matm"]:
         with open("NLGraph/topology/prompt/" + args.prompt + "-prompt.txt", "r") as f:
             exemplar = f.read()
         Q = Q + exemplar + "\n\n"
@@ -43,7 +43,7 @@ def translate(edge, n, args):
         Q = Q + 'node '+str(edge[i][0])+' should be visited before node '+str(edge[i][1])+'\n'
     if args.prompt == "Instruct":
         Q = Q + "Let's construct a graph with the nodes and edges first.\n"
-    Q = Q + "Q: Can all the nodes be visited? Give the solution. If can, output the topology order in list form at the back.\nA:"
+    Q = Q + "Q: Can all the nodes be visited? Give the solution. If yes, output the topology order in list form at the end.\nA:"
     match args.prompt:
         case "0-CoT":
             Q = Q + " Let's think step by step:"
