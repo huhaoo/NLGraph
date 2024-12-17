@@ -35,7 +35,7 @@ assert args.prompt in ["CoT", "none", "0-CoT", "LTM", "PROGRAM","k-shot","Instru
 def translate(edge, n, args):
     Q = ''
     if args.prompt in ["CoT", "k-shot", "LTM", "Instruct", "Algorithm","mat","kmat","rp","matm"]:
-        with open("NLGraph/topology/prompt/" + args.prompt + "-prompt.txt", "r") as f:
+        with open("NLgraph/topology/prompt/" + args.prompt + "-prompt.txt", "r") as f:
             exemplar = f.read()
         Q = Q + exemplar + "\n\n"
     Q = Q + "In a directed graph with " + str(n) + " nodes numbered from 0 to " + str(n-1) + ":\n"
