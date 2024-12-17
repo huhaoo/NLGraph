@@ -19,7 +19,7 @@ parser.add_argument('--model', type=str, default="text-davinci-003", help='name 
 parser.add_argument('--mode', type=str, default="easy", help='mode (default: easy)')
 parser.add_argument('--prompt', type=str, default="none", help='prompting techniques (default: none)')
 parser.add_argument('--T', type=int, default=0, help='temprature (default: 0)')
-parser.add_argument('--token', type=int, default=3072, help='max token')
+parser.add_argument('--token', type=int, default=2048, help='max token')
 parser.add_argument('--SC', type=int, default=0, help='self-consistency (default: 0)')
 parser.add_argument('--SC_num', type=int, default=5, help='number of cases for self-consistency (default: 5)')
 parser.add_argument('--full', type=bool, default=False, help='full test or stand test')
@@ -136,6 +136,19 @@ def process_ans(ans, pos, G):
 import re
 def evaluate(ans, G):
 
+    nums = re.findall(r'\d+', ans)
+    
+    n = G.number_of_nodes()
+
+    if len(nums) < n:
+        nums=[0]*n
+    
+    nums=[int(i) for i in nums]
+
+    if check(nums[-n:], G):
+        return 1
+    return 0
+
     pos = ans.find("solution")
     if pos == -1:
         pos = max(ans.find("yes"), ans.find("in the following order"))
@@ -147,15 +160,7 @@ def evaluate(ans, G):
 
     flag2  = check(solution, G)
 
-    nums = re.findall(r'\d+', ans)
-    
-    n = G.number_of_nodes()
-
-    if len(nums) <= n:
-        nums=[0]*n
-    
-    nums=[int(i) for i in nums]
-    return check(nums[-n:], G) or flag1 or flag2
+    return flag1 or flag2
     return ()
 
 def main():
